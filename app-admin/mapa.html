@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoRuta Riobamba – Dashboard GAD Municipal</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ruta1: #0284c7; --ruta2: #16a34a; --ruta3: #d97706;
+      --ruta4: #ea580c; --ruta5: #7c3aed; --ruta6: #e11d48; --ruta7: #0d9488;
+      --cam-ecu: #2563eb; --cam-mun: #16a34a; --hot: #dc2626;
+      --bg: #f8fafc; --panel: rgba(255, 255, 255, 0.95);
+      --border: rgba(0, 0, 0, 0.1); --text: #0f172a; --muted: #475569;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); }
+    #map { height: 100vh; width: 100%; }
+    .header {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; background: var(--panel); border: 1px solid var(--border);
+      border-top: 3px solid var(--ruta1); padding: 10px 28px; border-radius: 14px;
+      backdrop-filter: blur(12px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      white-space: nowrap;
+    }
+    .header h2 { font-size: 17px; font-weight: 800; letter-spacing: 0.04em; color: var(--text); }
+    .header p { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+    .stat-row { display: flex; gap: 18px; margin-top: 8px; justify-content: center; }
+    .stat { font-family: 'Space Mono', monospace; font-size: 11px; }
+    .stat span { color: var(--ruta1); font-weight: 700; font-size: 15px; display: block; }
+    .side-panel {
+      position: absolute; top: 14px; right: 14px; z-index: 1000;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 16px; width: 250px; backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .side-panel h4 {
+      font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text); margin-bottom: 12px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); margin: 12px 0 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; gap: 8px; }
+    .toggle-label { display: flex; align-items: center; gap: 8px; font-size: 12px; flex:1; font-weight: 600; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dash { width: 18px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+    .pill { position: relative; width: 38px; height: 20px; flex-shrink: 0; }
+    .pill input { opacity: 0; width: 0; height: 0; }
+    .pill-track {
+      position: absolute; inset: 0; background: #cbd5e1; border-radius: 20px;
+      cursor: pointer; transition: background .25s; border: 1px solid rgba(0,0,0,0.1);
+    }
+    .pill-track::after {
+      content: ''; position: absolute; top: 1px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transition: .25s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .pill input:checked + .pill-track { background: var(--ruta1); }
+    .pill input:checked + .pill-track::after { transform: translateX(18px); background: #fff; }
+    .info-badge {
+      position: absolute; bottom: 14px; left: 14px; z-index: 1000;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 14px; backdrop-filter: blur(12px); font-size: 11px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1); font-family: 'Space Mono', monospace;
+      color: var(--muted); max-width: 260px; line-height: 1.7;
+    }
+    .info-badge strong { color: var(--text); }
+    .leaflet-popup-content-wrapper {
+      background: var(--panel); color: var(--text); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .leaflet-popup-tip { background: var(--panel); }
+    .leaflet-popup-content { font-family: 'Syne', sans-serif; font-size: 13px; line-height: 1.5; }
+    .popup-title { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+    .popup-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;
+    }
+    .leaflet-control-zoom a {
+      background: var(--panel) !important; color: var(--text) !important;
+      border-color: var(--border) !important;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h2>🗺 EcoRuta GAD Municipal · Riobamba</h2>
+  <p>SISTEMA DE MONITOREO URBANO · CHIMBORAZO, ECUADOR</p>
+  <div class="stat-row">
+    <div class="stat"><span>7</span>Rutas activas</div>
+    <div class="stat"><span>213</span>Cámaras ECU-911</div>
+    <div class="stat"><span>220 t</span>Residuos/día</div>
+  </div>
+</div>
+
+<div class="side-panel">
+  <h4>Control de Capas</h4>
+  <div class="section-title">Rutas Recolección · Turno AM</div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta1)"></div>Ruta 1 · Vargas Torres</div><label class="pill"><input type="checkbox" id="r1" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta2)"></div>Ruta 2 · Juan Lavalle</div><label class="pill"><input type="checkbox" id="r2" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta3)"></div>Ruta 3 · 5 de Junio</div><label class="pill"><input type="checkbox" id="r3" checked><span class="pill-track"></span></label></div>
+
+  <div class="section-title">Rutas Recolección · Turno PM</div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta4); opacity:.85; border-radius:2px; border-top:3px dashed var(--ruta4); height:0; background:none;"></div>Ruta 4 · Norte/UNACH</div><label class="pill"><input type="checkbox" id="r4" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta5)"></div>Ruta 5 · Atahualpa/Licto</div><label class="pill"><input type="checkbox" id="r5" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta6)"></div>Ruta 6 · Milton Reyes</div><label class="pill"><input type="checkbox" id="r6" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dash" style="background:var(--ruta7)"></div>Ruta 7 · Ricardo Descalzi</div><label class="pill"><input type="checkbox" id="r7" checked><span class="pill-track"></span></label></div>
+
+  <div class="section-title">Videovigilancia</div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dot" style="background:var(--cam-ecu)"></div>Cámaras ECU-911</div><label class="pill"><input type="checkbox" id="cecu" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dot" style="background:var(--cam-mun)"></div>Cámaras Municipio</div><label class="pill"><input type="checkbox" id="cmun" checked><span class="pill-track"></span></label></div>
+
+  <div class="section-title">Gestión de Residuos</div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dot" style="background:var(--hot)"></div>Puntos críticos</div><label class="pill"><input type="checkbox" id="hot" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dot" style="background:var(--ruta4)"></div>Relleno Porlón</div><label class="pill"><input type="checkbox" id="relleno" checked><span class="pill-track"></span></label></div>
+  <div class="toggle-row"><div class="toggle-label"><div class="dot" style="background:var(--cam-mun)"></div>Contenedores GAD</div><label class="pill"><input type="checkbox" id="contenedores" checked><span class="pill-track"></span></label></div>
+</div>
+
+<div class="info-badge">
+  <strong>Fuentes GAD Riobamba 2026</strong><br>
+  Rutas 1–3 · 06:00–12:00<br>
+  Rutas 4–7 · 13:00–19:00<br>
+  ECU-911: 213 cámaras activas<br>
+  Ordenanza 009-2019 vigente
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map', { zoomControl: false }).setView([-1.6700, -78.6480], 14);
+L.control.zoom({ position: 'topleft' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap contributors © CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+// ======================== OSRM ROUTING API (OPEN SOURCE) ========================
+// Reemplazamos Google por OSRM. No necesita API Key y hace el "Snap to Roads" perfecto.
+
+function pg(coords, color, dash, lbl) {
+  const opts = { color, weight: 6, opacity: 0.85, lineJoin: 'round' };
+  if (dash) opts.dashArray = '10 6';
+
+  const routeGroup = L.layerGroup();
+  
+  // OSRM requiere las coordenadas en formato Lng,Lat
+  const osrmCoords = coords.map(c => `${c[1]},${c[0]}`).join(';');
+  const url = `https://router.project-osrm.org/route/v1/driving/${osrmCoords}?overview=full&geometries=geojson`;
+
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      if (data.routes && data.routes[0]) {
+        // OSRM devuelve las calles reales en formato Lng,Lat. Las invertimos a Lat,Lng para Leaflet.
+        const geojsonCoords = data.routes[0].geometry.coordinates;
+        const finalCoords = geojsonCoords.map(c => [c[1], c[0]]);
+        const line = L.polyline(finalCoords, opts).bindPopup(lbl);
+        routeGroup.addLayer(line);
+      } else {
+        routeGroup.addLayer(L.polyline(coords, opts).bindPopup(lbl));
+      }
+    })
+    .catch(err => {
+      console.error("OSRM falló, usando rectas:", err);
+      routeGroup.addLayer(L.polyline(coords, opts).bindPopup(lbl));
+    });
+
+  return routeGroup;
+}
+
+function circM(coord, color, bColor, label) {
+  return L.circleMarker(coord, { radius: 7, fillColor: color, color: bColor, weight: 2, fillOpacity: 1 })
+    .bindPopup(label);
+}
+
+const C = {
+  r1: '#0284c7', r2: '#16a34a', r3: '#d97706',
+  r4: '#ea580c', r5: '#7c3aed', r6: '#e11d48', r7: '#0d9488',
+  ecu: '#2563eb', mun: '#16a34a', hot: '#dc2626',
+  relleno: '#ea580c', cont: '#65a30d'
+};
+
+// ======================== RUTAS OPTIMIZADAS PARA OSRM ========================
+// Se usan puntos de anclaje (Inicio, Medio, Fin) para que OSRM dibuje la calle
+
+const layR1 = pg([[-1.6525, -78.6630], [-1.6608, -78.6508], [-1.6680, -78.6430]], C.r1, false, `<div class="popup-title" style="color:${C.r1}">Ruta 1 · Turno AM</div><div class="popup-badge" style="background:${C.r1}22;color:${C.r1}">06:00 – 12:00</div><b>Recorrido:</b> Vargas Torres · Combatientes de Tapi`).addTo(map);
+
+const layR2 = pg([[-1.6660, -78.6650], [-1.6780, -78.6530], [-1.6820, -78.6470]], C.r2, false, `<div class="popup-title" style="color:${C.r2}">Ruta 2 · Turno AM</div><div class="popup-badge" style="background:${C.r2}22;color:${C.r2}">06:00 – 12:00</div><b>Recorrido:</b> Juan Lavalle · Cristóbal Colón`).addTo(map);
+
+const layR3 = pg([[-1.6600, -78.6560], [-1.6645, -78.6500], [-1.6700, -78.6420]], C.r3, false, `<div class="popup-title" style="color:${C.r3}">Ruta 3 · Turno AM</div><div class="popup-badge" style="background:${C.r3}22;color:${C.r3}">06:00 – 12:00</div><b>Recorrido:</b> 5 de Junio · Darquea · Mariana de Jesús`).addTo(map);
+
+const layR4 = pg([[-1.6460, -78.6620], [-1.6500, -78.6580], [-1.6595, -78.6480]], C.r4, true, `<div class="popup-title" style="color:${C.r4}">Ruta 4 · Turno PM</div><div class="popup-badge" style="background:${C.r4}22;color:${C.r4}">13:00 – 19:00</div><b>Recorrido:</b> Sector Norte · UNACH`).addTo(map);
+
+const layR5 = pg([[-1.6720, -78.6580], [-1.6765, -78.6520], [-1.6825, -78.6440]], C.r5, false, `<div class="popup-title" style="color:${C.r5}">Ruta 5 · Turno PM</div><div class="popup-badge" style="background:${C.r5}22;color:${C.r5}">13:00 – 19:00</div><b>Recorrido:</b> Atahualpa y Licto · P.V. Maldonado`).addTo(map);
+
+const layR6 = pg([[-1.6600, -78.6680], [-1.6680, -78.6560], [-1.6740, -78.6460]], C.r6, false, `<div class="popup-title" style="color:${C.r6}">Ruta 6 · Turno PM</div><div class="popup-badge" style="background:${C.r6}22;color:${C.r6}">13:00 – 19:00</div><b>Recorrido:</b> Av. Milton Reyes · Canónigo Ramos`).addTo(map);
+
+const layR7 = pg([[-1.6620, -78.6740], [-1.6680, -78.6650], [-1.6740, -78.6560]], C.r7, true, `<div class="popup-title" style="color:${C.r7}">Ruta 7 · Turno PM</div><div class="popup-badge" style="background:${C.r7}22;color:${C.r7}">13:00 – 19:00</div><b>Recorrido:</b> Ricardo Descalzi`).addTo(map);
+
+// ======================== CÁMARAS Y OTROS ELEMENTOS ========================
+const ecuData = [
+  { c:[-1.6682,-78.6482], n:'Parque Guayaquil' }, { c:[-1.6640,-78.6510], n:'Terminal Terrestre' },
+  { c:[-1.6700,-78.6460], n:'Mercado Mayorista' }, { c:[-1.6660,-78.6540], n:'Parque Maldonado' },
+  { c:[-1.6720,-78.6420], n:'Camal Municipal' }, { c:[-1.6580,-78.6560], n:'UNACH Norte' },
+  { c:[-1.6600,-78.6480], n:'Av. Daniel León Borja' }, { c:[-1.6750,-78.6560], n:'Cdla. Los Álamos' },
+  { c:[-1.6620,-78.6600], n:'Estadio Olímpico' }, { c:[-1.6540,-78.6490], n:'Hospital IESS' },
+  { c:[-1.6800,-78.6500], n:'Mercado San Alfonso' }, { c:[-1.6680,-78.6600], n:'Colegio STAR' },
+];
+const layECU = L.layerGroup(ecuData.map(d => circM(d.c, C.ecu, '#fff', `<div class="popup-title" style="color:${C.ecu}">📷 ECU-911</div><div class="popup-badge" style="background:${C.ecu}22;color:${C.ecu}">24/7</div><b>${d.n}</b>`))).addTo(map);
+
+const munData = [
+  { c:[-1.6672,-78.6502], n:'Mercado La Merced' }, { c:[-1.6580,-78.6580], n:'Parque La Libertad' },
+  { c:[-1.6645,-78.6460], n:'Av. Canónigo Ramos' }, { c:[-1.6820,-78.6460], n:'Mercado Oriental' },
+  { c:[-1.6560,-78.6510], n:'Sector Bellavista' }, { c:[-1.6760,-78.6600], n:'Barrio San Pedro' },
+  { c:[-1.6700,-78.6540], n:'Parque Sucre' }, { c:[-1.6690,-78.6380], n:'Av. 9 de Octubre' },
+];
+const layMUN = L.layerGroup(munData.map(d => circM(d.c, C.mun, '#fff', `<div class="popup-title" style="color:${C.mun}">🏛 Cámara GAD</div><div class="popup-badge" style="background:${C.mun}22;color:${C.mun}">Municipio</div><b>${d.n}</b>`))).addTo(map);
+
+const hotData = [
+  { c:[-1.6720,-78.6400], r:280, n:'Camal Municipal', desc:'Desechos orgánicos' },
+  { c:[-1.6840,-78.6460], r:250, n:'Mercado Mayorista', desc:'Gran volumen' },
+  { c:[-1.6600,-78.6540], r:180, n:'Quinta Mosquera', desc:'Descarte informal' },
+  { c:[-1.6890,-78.6670], r:220, n:'Lomas de San Pedro', desc:'Botadero periférico' },
+  { c:[-1.6640,-78.6430], r:150, n:'9 de Octubre', desc:'Fuera de horario' },
+];
+const layHot = L.layerGroup(hotData.map(d => L.circle(d.c, { color: C.hot, fillColor: C.hot, fillOpacity: 0.25, weight: 2, radius: d.r, dashArray: '5 5' }).bindPopup(`<div class="popup-title" style="color:${C.hot}">⚠ Punto Crítico</div><b>${d.n}</b><br>${d.desc}`))).addTo(map);
+
+const layRelleno = L.layerGroup([
+  L.circle([-1.7100,-78.6300], { color: C.relleno, fillColor: C.relleno, fillOpacity: 0.2, weight: 3, radius: 400 }).bindPopup(`<div class="popup-title" style="color:${C.relleno}">🏭 Relleno El Porlón</div>Capacidad ~220 t/día`),
+  L.marker([-1.7100,-78.6300], { icon: L.divIcon({ className: '', html: `<div style="background:${C.relleno};color:#fff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;white-space:nowrap;border:2px solid #fff;">♻ El Porlón</div>`, iconAnchor: [40,10] }) })
+]).addTo(map);
+
+const contData = [
+  [-1.6675,-78.6495], [-1.6655,-78.6525], [-1.6705,-78.6465], [-1.6730,-78.6510],
+  [-1.6620,-78.6550], [-1.6810,-78.6480], [-1.6590,-78.6470], [-1.6760,-78.6530],
+  [-1.6690,-78.6560], [-1.6640,-78.6490], [-1.6720,-78.6460], [-1.6660,-78.6570],
+];
+const layCont = L.layerGroup(contData.map(c => L.circleMarker(c, { radius: 5, fillColor: C.cont, color: '#fff', weight: 1.5, fillOpacity: 0.9 }).bindPopup(`<div class="popup-title" style="color:${C.cont}">🗑 Contenedor GAD</div>`))).addTo(map);
+
+const layers = { r1: layR1, r2: layR2, r3: layR3, r4: layR4, r5: layR5, r6: layR6, r7: layR7, cecu: layECU, cmun: layMUN, hot: layHot, relleno: layRelleno, contenedores: layCont };
+Object.entries(layers).forEach(([id, layer]) => {
+  document.getElementById(id).addEventListener('change', function() {
+    this.checked ? map.addLayer(layer) : map.removeLayer(layer);
+  });
+});
+</script>
+</body>
+</html>
