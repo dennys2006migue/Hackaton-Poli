@@ -1,20 +1,17 @@
 /* =============================
+   CONFIGURACIÓN DE CONEXIÓN (MAESTRO)
+=============================*/
+const SERVER_IP = "10.91.193.4";
+const BASE_URL = `http://${SERVER_IP}:8000`;
+
+/* =============================
    NAVEGACION PANEL ADMIN
 =============================*/
 function showAdmin(page) {
-    // Ocultar todas las páginas
-    const sections = document.querySelectorAll(".admin-page");
-    sections.forEach(section => {
-        section.classList.remove("active");
-    });
-
-    // Mostrar la página seleccionada
+    document.querySelectorAll(".admin-page").forEach(section => section.classList.remove("active"));
     const target = document.getElementById(page);
-    if (target) {
-        target.classList.add("active");
-    }
+    if (target) target.classList.add("active");
 
-    // Refrescar iframe si es el mapa para evitar errores de carga
     if (page === 'rutas') {
         const iframe = target.querySelector('iframe');
         if (iframe) iframe.src = iframe.src;
@@ -22,96 +19,102 @@ function showAdmin(page) {
 }
 
 /* =============================
-   CONTADOR GLOBAL ALERTAS
+   1. DASHBOARD MUNICIPAL (ALFONSO)
+   Lógica: Long Polling cada 2.5s
 =============================*/
-let totalAlertas = 0;
+let historialAlertasIds = new Set(); // Para no duplicar alertas
 
-function crearAlerta(data) {
-    totalAlertas++;
-    const contador = document.getElementById("alertasTotales");
-    if (contador) contador.innerText = totalAlertas;
+async function obtenerAlertasServidor() {
+    try {
+        const response = await fetch(`${BASE_URL}/obtener-alertas`);
+        const data = await response.json();
 
+        // Recorrer el arreglo de alertas del servidor
+        data.alertas.forEach(alerta => {
+            // Solo pintar si el ID no existe en nuestro historial
+            if (!historialAlertasIds.has(alerta.id)) {
+                historialAlertasIds.add(alerta.id);
+                renderizarAlertaDashboard(alerta);
+            }
+        });
+    } catch (error) {
+        console.error("Error conectando con el servidor de Dennys:", error);
+    }
+}
+
+function renderizarAlertaDashboard(alerta) {
     const contenedor = document.getElementById("listaDenuncias");
     if (!contenedor) return;
 
-    const alerta = document.createElement("div");
-    alerta.className = "alert";
-    alerta.innerHTML = `
-        <strong>🚨 Alerta detectada</strong><br>
-        Tipo: ${data.tipo_residuo || data.evento}<br>
-        Nivel: ${data.nivel_contaminacion || data.nivel}<br>
-        Zona: ${data.zona || data.ubicacion || "Desconocida"}
-        <br><br>
-        <button class="primary" onclick="marcarAtendido(this)" style="padding:5px 10px; font-size:12px;">✔ Atendido</button>
+    // Lógica de Gravedad para el color
+    const esCritico = alerta.tipo_residuo.includes("(Grav 4)") || 
+                     alerta.tipo_residuo.includes("(Grav 5)") || 
+                     alerta.tipo_residuo.includes("ALERTA");
+
+    const div = document.createElement("div");
+    div.className = `alert ${esCritico ? 'alert-danger' : ''}`; // Usamos la clase de gravedad
+    div.style.borderLeft = esCritico ? "6px solid #e53935" : "6px solid #2563eb";
+    div.style.background = esCritico ? "#ffebee" : "#fff";
+
+    div.innerHTML = `
+        <div style="display:flex; justify-content:space-between;">
+            <strong>🚨 ${alerta.ubicacion}</strong>
+            <small>${alerta.hora}</small>
+        </div>
+        <p style="margin-top:5px;">${alerta.tipo_residuo}</p>
+        <button class="primary" onclick="this.parentElement.remove()" style="margin-top:10px; padding:5px 10px; font-size:12px;">Descartar</button>
     `;
-    contenedor.prepend(alerta);
+
+    contenedor.prepend(div);
+    
+    // Actualizar contador global
+    const contador = document.getElementById("alertasTotales");
+    if (contador) contador.innerText = historialAlertasIds.size;
 }
 
-function marcarAtendido(btn) {
-    const card = btn.parentElement;
-    card.style.background = "#d4edda";
-    card.style.borderLeft = "6px solid #28a745";
-    card.innerHTML += "<br><strong>✅ Caso atendido</strong>";
-    btn.remove();
-}
+// Iniciar Long Polling (Cada 2.5 segundos)
+setInterval(obtenerAlertasServidor, 2500);
+
 
 /* =============================
-   MQTT TIEMPO REAL
+   2. APP CIUDADANA (ARIEL / MELA)
+   Lógica: multipart/form-data
 =============================*/
-const client = new Paho.MQTT.Client(
-    "broker.hivemq.com",
-    8000,
-    "admin_" + Math.random()
-);
+async function enviarDenunciaCiudadana(archivoImagen) {
+    // 1. Mostrar Loader (puedes crear un div con id "loader")
+    console.log("Enviando a IA...");
+    
+    const formData = new FormData();
+    formData.append('file', archivoImagen);
 
-client.onMessageArrived = function(message) {
     try {
-        const data = JSON.parse(message.payloadString);
-        crearAlerta(data);
-    } catch (e) {
-        console.error("Error al parsear MQTT:", e);
-    }
-};
+        const response = await fetch(`${BASE_URL}/reporte-ciudadano`, {
+            method: 'POST',
+            body: formData
+            // Nota: No poner Headers de Content-Type, el navegador lo pone solo con FormData
+        });
 
-client.connect({
-    onSuccess: function() {
-        console.log("Admin conectado MQTT");
-        client.subscribe("ecoruta/alertas");
-    },
-    useSSL: false
-});
+        const res = await response.json();
+
+        if (res.status === "success") {
+            alert(`¡Gracias! Categoría: ${res.datos.categoria}. Has ganado ${res.datos.eco_puntos} puntos.`);
+            // Aquí podrías actualizar la UI con el mensaje motivador
+            console.log(res.datos.mensaje_ciudadano);
+        } else {
+            alert("Error en el análisis de la IA.");
+        }
+
+    } catch (error) {
+        alert("Se perdió la conexión con el servidor maestro (10.91.193.4)");
+        console.error(error);
+    }
+}
 
 /* =============================
-   SIMULACIONES IA
+   SIMULACIONES DE VIDEO (LOCALES)
 =============================*/
 function analizarVideo() {
-    const resultado = document.getElementById("resultadoIA");
-    resultado.innerHTML = "🧠 Analizando video con IA...";
-    setTimeout(() => {
-        resultado.innerHTML = "🚨 IA detectó acumulación crítica de residuos";
-        crearAlerta({ evento: "Contaminación por cámara", nivel: "ALTO", ubicacion: "Zona Centro" });
-    }, 2000);
+    const res = document.getElementById("resultadoIA");
+    res.innerHTML = "📡 Conectando con servidor de Visión...";
+    setTimeout(() => { res.innerHTML = "✅ Streaming activo - Analizando en nube local"; }, 1500);
 }
-
-function analizarCamion() {
-    const resultado = document.getElementById("resultadoCamion");
-    resultado.innerHTML = "🚛 Analizando ruta del camión...";
-    setTimeout(() => {
-        resultado.innerHTML = "⚠ Ruta ineficiente detectada";
-        crearAlerta({ evento: "Ruta ineficiente", nivel: "MEDIO", ubicacion: "Ruta Camión 3" });
-    }, 2000);
-}
-
-function demoAlertasAutomaticas() {
-    setInterval(() => {
-        const niveles = ["BAJO", "MEDIO", "ALTO"];
-        const zonas = ["Centro", "Norte", "Sur", "Mercado", "Terminal"];
-        crearAlerta({
-            evento: "Detección automática IA",
-            nivel: niveles[Math.floor(Math.random() * 3)],
-            ubicacion: zonas[Math.floor(Math.random() * 5)]
-        });
-    }, 15000);
-}
-
-demoAlertasAutomaticas();
