@@ -1,0 +1,54 @@
+GUÍA DE INTEGRACIÓN - EQUIPO 404 (COPIAR Y COMPARTIR) 🚨
+Equipo, el Backend y la Visión IoT ya están en la nube local. Yo seré el servidor maestro.
+Para conectarnos a través del Wi-Fi del evento, tienen que hacer sus peticiones fetch() a mi IP local, no a localhost.
+
+Mi IP de Servidor (Dennys): 10.91.193.4
+
+Puerto: 8000
+
+URL Base: http://10.91.193.4:8000
+
+Aquí están los parámetros técnicos exactos que sus Frontends deben enviar y lo que van a recibir. Adapten su código JS a esto:
+
+📱 1. PARA MELA Y ARIEL (APP CIUDADANA)
+Tienen que cambiar la URL de su fetch a: http://10.91.193.4:8000/reporte-ciudadano
+
+Método: POST
+
+Tipo de envío: Tienen que enviarlo como multipart/form-data. (En JS, usen el objeto FormData() nativo y hagan formData.append('file', archivoImagen)).
+
+Estructura de Respuesta (Lo que la IA les devuelve):
+
+JSON
+{
+  "status": "success",
+  "datos": {
+    "categoria": "String (Ej: Reciclable, Orgánico, Acumulación Ilegal)",
+    "mensaje_ciudadano": "String (Mensaje corto motivador)",
+    "nivel_alerta_admin": "String (Bajo, Medio, Alto)",
+    "eco_puntos": Número entero (Ej: 50 o 0)
+  }
+}
+Instrucción de UI: Asegúrense de poner un "Loader" (estado de carga) mientras se hace el fetch, porque la IA puede tardar un par de segundos en analizar la foto. Si el status viene como "error", muestren un alert() diciendo que se perdió la conexión.
+
+💻 2. PARA ALFONSO (DASHBOARD MUNICIPAL)
+Tienes que cambiar la URL de tu fetch a: http://10.91.193.4:8000/obtener-alertas
+
+Método: GET
+
+Lógica: Tienes que hacer Long Polling. Haz un setInterval() en tu JS que le pegue a esta ruta cada 2500 milisegundos (2.5 seg) para que el mapa se actualice en tiempo real.
+
+Estructura de Respuesta (Lo que te entrego):
+
+JSON
+{
+  "alertas": [
+    {
+      "id": 1,
+      "hora": "14:35:10",
+      "ubicacion": "Cámara Urbana #3 - Riobamba",
+      "tipo_residuo": "Obj: Botella de plástico | Residuos Normales (Grav 1)"
+    }
+  ]
+}
+Instrucción de UI: El arreglo alertas va a ir creciendo. Tu código debe contar cuántas alertas tienes pintadas y compararlo con el tamaño del arreglo que te llega. Solo pinta las nuevas para que el mapa no parpadee. Si el texto en tipo_residuo incluye la palabra "(Grav 4)", "(Grav 5)" o "ALERTA", pinta el pin del mapa en rojo.
