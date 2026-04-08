@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Riobamba Limpia - IA</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="login-screen" class="screen active">
+        <div class="login-box">
+            <span class="material-icons logo-icon">recycling</span>
+            <h1>Riobamba Limpia</h1>
+            <p>Gestión de Residuos con IA</p>
+            <input type="text" id="username" placeholder="Usuario">
+            <input type="password" id="password" placeholder="Contraseña">
+            <select id="role-selector">
+                <option value="ciudadano">Ciudadano</option>
+                <option value="admin">Administrador</option>
+            </select>
+            <button onclick="handleLogin()">Ingresar</button>
+        </div>
+    </div>
+
+    <main id="app-content" class="hidden">
+        
+        <section id="map-section" class="app-section">
+            <div id="map"></div>
+            <button class="fab-location" onclick="getLocation()"><span class="material-icons">my_location</span></button>
+            <button class="fab-ia"><span class="material-icons">psychology</span></button>
+        </section>
+
+        <section id="history-section" class="app-section hidden">
+            <div class="section-header"><h3>Historial de Reportes</h3></div>
+            <div class="list-container" id="history-list">
+                <div class="card">
+                    <p><strong>Sector:</strong> La Condamine</p>
+                    <p>Fecha: 08/04/2026</p>
+                    <span class="badge pending">En proceso</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="notifications-section" class="app-section hidden">
+            <div class="section-header"><h3>Notificaciones</h3></div>
+            <div class="list-container">
+                <div class="notif-item">
+                    <span class="material-icons text-green">task_alt</span>
+                    <p>¡Limpieza completada en tu reporte de Av. Unidad Nacional!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="profile-section" class="app-section hidden">
+            <div class="profile-card">
+                <div class="avatar">MB</div>
+                <h3>Melany Bejarani</h3>
+                <p>Nivel: Eco-Ciudadana ⭐</p>
+            </div>
+            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+        </section>
+
+        <nav class="bottom-nav">
+            <div class="nav-btn active" onclick="showSection('map-section', this)"><span class="material-icons">map</span><span>Inicio</span></div>
+            <div class="nav-btn" onclick="showSection('history-section', this)"><span class="material-icons">history</span><span>Historial</span></div>
+            <div class="nav-camera" onclick="triggerCamera()"><div class="cam-btn"><span class="material-icons">photo_camera</span></div></div>
+            <div class="nav-btn" onclick="showSection('notifications-section', this)"><span class="material-icons">notifications</span><span>Alertas</span></div>
+            <div class="nav-btn" onclick="showSection('profile-section', this)"><span class="material-icons">person</span><span>Perfil</span></div>
+        </nav>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
