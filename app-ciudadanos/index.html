@@ -28,7 +28,7 @@
     <main id="app-content" class="hidden">
         
         <section id="map-section" class="app-section">
-            <div id="map"></div>
+            <div id="map" style="height: calc(100vh - 70px); width: 100%;"></div>
             <button class="fab-location" onclick="getLocation()"><span class="material-icons">my_location</span></button>
             <button class="fab-ia"><span class="material-icons">psychology</span></button>
         </section>
@@ -55,10 +55,14 @@
         </section>
 
         <section id="profile-section" class="app-section hidden">
-            <div class="profile-card">
-                <div class="avatar">MB</div>
-                <h3>Melany Bejarani</h3>
-                <p>Nivel: Eco-Ciudadana ⭐</p>
+            <div class="profile-header">
+                <div class="avatar-large">MB</div>
+                <h2>Melany Bejarani</h2>
+            </div>
+            <div class="profile-details">
+                <div class="info-row"><label>Correo:</label><p>melany.bejarani@espoch.edu.ec</p></div>
+                <div class="info-row"><label>Celular:</label><p>0987654321</p></div>
+                <div class="info-row"><label>Ciudad:</label><p>Riobamba, Ecuador</p></div>
             </div>
             <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
         </section>
@@ -70,6 +74,27 @@
             <div class="nav-btn" onclick="showSection('notifications-section', this)"><span class="material-icons">notifications</span><span>Alertas</span></div>
             <div class="nav-btn" onclick="showSection('profile-section', this)"><span class="material-icons">person</span><span>Perfil</span></div>
         </nav>
+
+        <div id="camera-overlay" class="hidden">
+            <div class="camera-window">
+                <div id="camera-feed">
+                    <div class="scan-line"></div>
+                    <video id="webcam" autoplay playsinline class="hidden"></video>
+                    <canvas id="photo-canvas" class="hidden"></canvas>
+                    <span id="camera-placeholder" class="material-icons" style="font-size: 50px;">photo_camera</span>
+                    <p id="camera-text">Iniciando cámara...</p>
+                </div>
+                <div class="camera-controls">
+                    <button class="btn-cancel" onclick="closeCamera()">Cancelar</button>
+                    <button id="btn-capture" class="btn-primary" onclick="takePhoto()">
+                        <span class="material-icons">camera</span> Capturar
+                    </button>
+                    <button id="btn-upload" class="btn-upload hidden" onclick="confirmReport()">
+                        <span class="material-icons">cloud_upload</span> Subir Reporte
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
