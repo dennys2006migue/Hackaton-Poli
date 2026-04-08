@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>EcoRuta Admin</title>
+
+<link rel="stylesheet" href="style_admin.css">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://unpkg.com/paho-mqtt/mqttws31.min.js"></script>
+</head>
+
+<body>
+
+<header>
+    <h2>🌱 EcoRuta | Centro Inteligente Municipal</h2>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+<button onclick="showAdmin('resumen')">
+<i class="fa-solid fa-chart-line"></i> Resumen
+</button>
+
+<button onclick="showAdmin('rutas')">
+<i class="fa-solid fa-map"></i> Rutas
+</button>
+
+<button onclick="showAdmin('desechos')">
+<i class="fa-solid fa-recycle"></i> Desechos
+</button>
+
+<button onclick="showAdmin('denuncias')">
+<i class="fa-solid fa-triangle-exclamation"></i> Denuncias
+</button>
+
+<button onclick="showAdmin('camaras')">
+<i class="fa-solid fa-video"></i> Cámaras IA
+</button>
+
+<button onclick="showAdmin('camiones')">
+<i class="fa-solid fa-truck"></i> Camiones
+</button>
+
+</aside>
+
+<!-- CONTENIDO -->
+<main>
+
+<!-- RESUMEN -->
+<section id="resumen" class="admin-page active">
+
+<h3>Resumen Inteligente</h3>
+
+<div class="stats">
+<div class="stat-card">🚛 Rutas activas <span>8</span></div>
+<div class="stat-card">♻️ Toneladas recolectadas <span>12T</span></div>
+<div class="stat-card">🚨 Alertas IA <span id="alertasTotales">0</span></div>
+</div>
+
+</section>
+
+<!-- RUTAS -->
+<section id="rutas" class="admin-page">
+<h3>Gestión de Rutas</h3>
+
+<div class="card">Mapa interactivo (Demo)</div>
+
+<button class="primary">➕ Nueva Ruta</button>
+
+</section>
+
+<!-- DESECHOS -->
+<section id="desechos" class="admin-page">
+
+<h3>Control de Desechos</h3>
+
+<div class="progress">
+<p>Orgánico</p>
+<div class="bar"><div style="width:70%"></div></div>
+
+<p>Inorgánico</p>
+<div class="bar"><div style="width:40%"></div></div>
+
+</div>
+
+</section>
+
+<!-- DENUNCIAS -->
+<section id="denuncias" class="admin-page">
+<h3>Denuncias Ciudadanas</h3>
+
+<div id="listaDenuncias"></div>
+
+</section>
+
+<!-- CAMARAS -->
+<section id="camaras" class="admin-page">
+<h3>Análisis IA - Cámaras Urbanas</h3>
+
+<video controls width="100%">
+<source src="../api-backend/data/test_route.mp4">
+</video>
+
+<button class="primary" onclick="analizarVideo()">Analizar Video</button>
+
+<div id="resultadoIA"></div>
+
+</section>
+
+<!-- CAMIONES -->
+<section id="camiones" class="admin-page">
+
+<h3>Monitoreo Camiones Recolectores</h3>
+
+<video controls width="100%">
+<source src="../api-backend/data/test_route.mp4">
+</video>
+
+<button class="primary" onclick="analizarCamion()">
+Detectar Contaminación
+</button>
+
+<div id="resultadoCamion"></div>
+
+</section>
+
+</main>
+</div>
+
+<script src="admin.js"></script>
+
+</body>
+</html>
