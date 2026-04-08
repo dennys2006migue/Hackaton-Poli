@@ -3,101 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Riobamba Limpia - IA</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <title>EcoRuta - Ciudadano</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="login-screen" class="screen active">
-        <div class="login-box">
-            <span class="material-icons logo-icon">recycling</span>
-            <h1>Riobamba Limpia</h1>
-            <p>Gestión de Residuos con IA</p>
-            <input type="text" id="username" placeholder="Usuario">
-            <input type="password" id="password" placeholder="Contraseña">
-            <select id="role-selector">
-                <option value="ciudadano">Ciudadano</option>
-                <option value="admin">Administrador</option>
-            </select>
-            <button onclick="handleLogin()">Ingresar</button>
-        </div>
-    </div>
-
-    <main id="app-content" class="hidden">
-        
-        <section id="map-section" class="app-section">
-            <div id="map" style="height: calc(100vh - 70px); width: 100%;"></div>
-            <button class="fab-location" onclick="getLocation()"><span class="material-icons">my_location</span></button>
-            <button class="fab-ia"><span class="material-icons">psychology</span></button>
+    <main id="app-content">
+        <section id="map-section" class="app-section active">
+            <div class="map-wrapper" style="height: calc(100vh - 75px); width: 100%;">
+                <iframe src="../app-admin/mapa.html" frameborder="0" style="width: 100%; height: 100%;"></iframe>
+            </div>
         </section>
 
-        <section id="history-section" class="app-section hidden">
-            <div class="section-header"><h3>Historial de Reportes</h3></div>
-            <div class="list-container" id="history-list">
-                <div class="card">
-                    <p><strong>Sector:</strong> La Condamine</p>
-                    <p>Fecha: 08/04/2026</p>
-                    <span class="badge pending">En proceso</span>
+        <section id="history-section" class="app-section">
+            <div class="card">
+                <h3>Mis Reportes IA</h3>
+                <div id="history-list" style="margin-top: 15px;">
+                    <p style="color: #888; text-align: center;">No hay reportes recientes.</p>
                 </div>
             </div>
         </section>
 
-        <section id="notifications-section" class="app-section hidden">
-            <div class="section-header"><h3>Notificaciones</h3></div>
-            <div class="list-container">
-                <div class="notif-item">
-                    <span class="material-icons text-green">task_alt</span>
-                    <p>¡Limpieza completada en tu reporte de Av. Unidad Nacional!</p>
+        <section id="notifications-section" class="app-section">
+            <div class="card">
+                <h3>Centro de Alertas y Mensajes</h3>
+                <div id="notif-list" style="margin-top: 15px;">
+                    <div class="alert">
+                        <strong>🌱 ¡Bienvenido!</strong><br>
+                        Usa la cámara para reportar residuos.
+                    </div>
                 </div>
             </div>
         </section>
 
-        <section id="profile-section" class="app-section hidden">
-            <div class="profile-header">
-                <div class="avatar-large">MB</div>
+        <section id="profile-section" class="app-section">
+            <div class="card" style="text-align: center;">
+                <div class="avatar-large" style="width:70px; height:70px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; font-size:24px;">MB</div>
                 <h2>Melany Bejarani</h2>
+                <p>EcoPuntos: <strong style="color: var(--success);">★ 450</strong></p>
+                <button class="btn-cancel" onclick="window.location.href='../index.html'" style="margin-top: 20px; width: 100%;">Cerrar Sesión</button>
             </div>
-            <div class="profile-details">
-                <div class="info-row"><label>Correo:</label><p>melany.bejarani@espoch.edu.ec</p></div>
-                <div class="info-row"><label>Celular:</label><p>0987654321</p></div>
-                <div class="info-row"><label>Ciudad:</label><p>Riobamba, Ecuador</p></div>
-            </div>
-            <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
         </section>
 
         <nav class="bottom-nav">
-            <div class="nav-btn active" onclick="showSection('map-section', this)"><span class="material-icons">map</span><span>Inicio</span></div>
-            <div class="nav-btn" onclick="showSection('history-section', this)"><span class="material-icons">history</span><span>Historial</span></div>
-            <div class="nav-camera" onclick="triggerCamera()"><div class="cam-btn"><span class="material-icons">photo_camera</span></div></div>
-            <div class="nav-btn" onclick="showSection('notifications-section', this)"><span class="material-icons">notifications</span><span>Alertas</span></div>
-            <div class="nav-btn" onclick="showSection('profile-section', this)"><span class="material-icons">person</span><span>Perfil</span></div>
+            <div class="nav-btn active" onclick="showSection('map-section', this)">
+                <span class="material-icons">map</span><span>Inicio</span>
+            </div>
+            <div class="nav-btn" onclick="showSection('history-section', this)">
+                <span class="material-icons">history</span><span>Historial</span>
+            </div>
+            <div class="nav-camera" onclick="triggerCamera()">
+                <div class="cam-btn"><span class="material-icons">photo_camera</span></div>
+            </div>
+            <div class="nav-btn" onclick="showSection('notifications-section', this)">
+                <span class="material-icons">notifications</span><span>Alertas</span>
+            </div>
+            <div class="nav-btn" onclick="showSection('profile-section', this)">
+                <span class="material-icons">person</span><span>Perfil</span>
+            </div>
         </nav>
 
         <div id="camera-overlay" class="hidden">
             <div class="camera-window">
                 <div id="camera-feed">
-                    <div class="scan-line"></div>
-                    <video id="webcam" autoplay playsinline class="hidden"></video>
+                    <div id="loader-ia" class="hidden">
+                        <div class="scan-line"></div>
+                        <p style="position: absolute; bottom: 20px; color: white;">Analizando...</p>
+                    </div>
+                    <video id="webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                     <canvas id="photo-canvas" class="hidden"></canvas>
-                    <span id="camera-placeholder" class="material-icons" style="font-size: 50px;">photo_camera</span>
-                    <p id="camera-text">Iniciando cámara...</p>
                 </div>
                 <div class="camera-controls">
-                    <button class="btn-cancel" onclick="closeCamera()">Cancelar</button>
-                    <button id="btn-capture" class="btn-primary" onclick="takePhoto()">
-                        <span class="material-icons">camera</span> Capturar
-                    </button>
-                    <button id="btn-upload" class="btn-upload hidden" onclick="confirmReport()">
-                        <span class="material-icons">cloud_upload</span> Subir Reporte
-                    </button>
+                    <button class="btn-cancel" onclick="closeCamera()">X</button>
+                    <button id="btn-capture" class="btn-primary" onclick="takePhoto()" style="flex:1;">CAPTURA</button>
+                    <button id="btn-upload" class="btn-upload hidden" onclick="confirmReport()" style="flex:1;">ENVIAR IA</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

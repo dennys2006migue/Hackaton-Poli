@@ -1,64 +1,122 @@
-let map;
-let userMarker;
-let stream; 
-
-// --- ELEMENTOS DEL DOM ---
+const SERVER_IP = "10.91.193.4";
+const BASE_URL = `http://${SERVER_IP}:8000`;
+let stream;
 const video = document.getElementById('webcam');
 const canvas = document.getElementById('photo-canvas');
-const placeholder = document.getElementById('camera-placeholder');
-const cameraText = document.getElementById('camera-text');
 
-// 1. INICIAR MAPA
-function initMap() {
-    map = L.map('map', { zoomControl: false }).setView([-1.6709, -78.6477], 15);
+/* =============================
+   NAVEGACIÓN (CORREGIDA)
+=============================*/
+function showSection(sectionId, element) {
+    // 1. Ocultar todas las secciones
+    document.querySelectorAll('.app-section').forEach(s => {
+        s.classList.remove('active');
+        s.style.display = 'none';
+    });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap',
-        subdomains: 'abcd',
-        maxZoom: 20
-    }).addTo(map);
+    // 2. Mostrar la sección seleccionada
+    const target = document.getElementById(sectionId);
+    if (target) {
+        target.classList.add('active');
+        target.style.display = 'block';
+    }
 
-    drawTruckRoutes();
+    // 3. Cambiar estado visual de los botones
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    element.classList.add('active');
 }
 
-// 2. RUTAS DE CAMIONES
-function drawTruckRoutes() {
-    const routeCoordinates = [
-        [-1.6700, -78.6500],
-        [-1.6750, -78.6550],
-        [-1.6800, -78.6450],
-        [-1.6850, -78.6500]
-    ];
-
-    L.polyline(routeCoordinates, {
-        color: '#2563eb',
-        weight: 5,
-        opacity: 0.7
-    }).addTo(map);
-}
-
-// 3. LÓGICA DE CÁMARA
+/* =============================
+   CÁMARA (VISUALIZACIÓN CORREGIDA)
+=============================*/
 async function triggerCamera() {
     document.getElementById('camera-overlay').classList.remove('hidden');
-    
+    video.classList.remove('hidden');
+    canvas.classList.add('hidden');
     document.getElementById('btn-capture').classList.remove('hidden');
     document.getElementById('btn-upload').classList.add('hidden');
-    video.classList.add('hidden');
-    canvas.classList.add('hidden');
-    placeholder.classList.remove('hidden');
-    cameraText.innerText = "Preparando cámara...";
 
     try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        // Configuramos para que use la cámara trasera en móviles
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "environment" }, 
+            audio: false 
+        });
         video.srcObject = stream;
-        video.onloadedmetadata = () => {
-            placeholder.classList.add('hidden');
-            cameraText.classList.add('hidden');
-            video.classList.remove('hidden');
-        };
+        video.play(); // Aseguramos que el video inicie
     } catch (err) {
-        cameraText.innerText = "Error al acceder a la cámara";
+        alert("No se pudo activar la cámara: " + err);
+        closeCamera();
     }
+}
+
+function takePhoto() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    video.classList.add('hidden');
+    canvas.classList.remove('hidden');
+    
+    document.getElementById('btn-capture').classList.add('hidden');
+    document.getElementById('btn-upload').classList.remove('hidden');
+}
+
+async function confirmReport() {
+    document.getElementById('loader-ia').classList.remove('hidden');
+    
+    canvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('file', blob, 'reporte_ia.jpg');
+
+        try {
+            const response = await fetch(`${BASE_URL}/reporte-ciudadano`, {
+                method: 'POST',
+                body: formData
+            });
+            const res = await response.json();
+
+            if (res.status === "success") {
+                // ENVIAR AL SUBMENU DE ALERTAS (No alert del navegador)
+                agregarAlertaAlSubmenu(res.datos);
+                actualizarHistorial(res.datos);
+                closeCamera();
+            }
+        } catch (e) {
+            alert("Error de conexión con el servidor maestro.");
+        } finally {
+            document.getElementById('loader-ia').classList.add('hidden');
+        }
+    }, 'image/jpeg');
+}
+
+/* =============================
+   SUBMENU DE ALERTAS Y RECORDATORIOS
+=============================*/
+function agregarAlertaAlSubmenu(datos) {
+    const list = document.getElementById('notif-list');
+    const item = document.createElement('div');
+    item.className = 'alert';
+    item.style.borderLeft = "6px solid #10b981";
+    item.style.background = "#f0fdf4";
+    
+    item.innerHTML = `
+        <strong>✅ IA: ${datos.categoria}</strong><br>
+        ${datos.mensaje_ciudadano}<br>
+        <small>Has ganado ${datos.eco_puntos} EcoPuntos</small>
+    `;
+    list.prepend(item);
+}
+
+function actualizarHistorial(datos) {
+    const list = document.getElementById('history-list');
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+        <strong>${datos.categoria}</strong><br>
+        <small>${new Date().toLocaleString()}</small>
+    `;
+    list.prepend(card);
 }
 
 function closeCamera() {
@@ -67,112 +125,3 @@ function closeCamera() {
     }
     document.getElementById('camera-overlay').classList.add('hidden');
 }
-
-// 4. FLUJO DE FOTO
-function takePhoto() {
-    if (!stream) return;
-
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    video.classList.add('hidden');
-    canvas.classList.remove('hidden');
-
-    document.getElementById('btn-capture').classList.add('hidden');
-    document.getElementById('btn-upload').classList.remove('hidden');
-}
-
-function confirmReport() {
-    const time = new Date().toLocaleTimeString();
-    
-    // A. Marcador en el Mapa
-    L.circleMarker([map.getCenter().lat, map.getCenter().lng], {
-        radius: 10, fillColor: "#10b981", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8
-    }).addTo(map).bindPopup("Reporte realizado a las " + time).openPopup();
-
-    // B. Llamar a funciones de actualización
-    updateHistory(time);
-    sendNotifications(time);
-
-    closeCamera();
-    alert("¡Reporte enviado con éxito! Revisa tus notificaciones.");
-}
-
-// 5. ACTUALIZACIÓN DE INTERFAZ (HISTORIAL Y ALERTAS)
-function updateHistory(time) {
-    const historyList = document.getElementById('history-list');
-    if (!historyList) return;
-
-    const newCard = `
-        <div class="card">
-            <p><strong>Sector:</strong> Reporte IA Riobamba</p>
-            <p>Fecha: ${new Date().toLocaleDateString()} - ${time}</p>
-            <span class="badge" style="background:#dcfce7; color:#166534; font-weight:bold;">Completado ✅</span>
-        </div>`;
-    historyList.insertAdjacentHTML('afterbegin', newCard);
-}
-
-function sendNotifications(time) {
-    const notifList = document.querySelector('#notifications-section .list-container');
-    if (!notifList) return;
-
-    setTimeout(() => {
-        notifList.insertAdjacentHTML('afterbegin', `
-            <div class="notif-item">
-                <span class="material-icons" style="color:#10b981;">task_alt</span>
-                <p>Tu reporte de las ${time} ha sido registrado.</p>
-            </div>`);
-    }, 1000);
-
-    setTimeout(() => {
-        notifList.insertAdjacentHTML('afterbegin', `
-            <div class="notif-item">
-                <span class="material-icons" style="color:#2563eb;">local_shipping</span>
-                <p>⚠️ Alerta: Un camión pasará mañana a las 9:00 AM cerca de tu zona.</p>
-            </div>`);
-    }, 3000);
-
-    setTimeout(() => {
-        notifList.insertAdjacentHTML('afterbegin', `
-            <div class="notif-item">
-                <span class="material-icons" style="color:#10b981;">published_with_changes</span>
-                <p>¡Limpieza completada! El municipio verificó la recolección.</p>
-            </div>`);
-    }, 5000);
-}
-
-// 6. NAVEGACIÓN Y ACCESO
-function handleLogin() {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app-content').classList.remove('hidden');
-    setTimeout(() => { map.invalidateSize(); }, 300);
-}
-
-function showSection(sectionId, element) {
-    document.querySelectorAll('.app-section').forEach(s => s.classList.add('hidden'));
-    document.getElementById(sectionId).classList.remove('hidden');
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    element.classList.add('active');
-    
-    if(sectionId === 'map-section') {
-        setTimeout(() => { map.invalidateSize(); }, 100);
-    }
-}
-
-function getLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((position) => {
-            const { latitude, longitude } = position.coords;
-            map.flyTo([latitude, longitude], 16);
-            if (userMarker) map.removeLayer(userMarker);
-            userMarker = L.marker([latitude, longitude]).addTo(map)
-                .bindPopup("Tu ubicación actual").openPopup();
-        });
-    }
-}
-
-function logout() { location.reload(); }
-
-window.onload = initMap;
